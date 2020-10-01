@@ -100,15 +100,24 @@ def main():
   import matplotlib.pyplot as plt
   from matplotlib import patches
 
+  point = [(0.8, 1.8), (2.2, 1.0), (2.7, 1.4)]
+
   paths = get_paths()
-  p = get_interpolated_path(paths, 2, 3)
-  
-  for t in np.arange(0, 49.01, .01):
-    print(p(t))
+  p1 = get_interpolated_path(paths, *point[0])
+  p2 = get_interpolated_path(paths, *point[1])
+  p3 = get_interpolated_path(paths, *point[2])
+
+  new_path1 = list(zip(*[p1(t) for t in np.arange(0, 49.1, .5)]))
+  new_path2 = list(zip(*[p2(t) for t in np.arange(0, 49.1, .5)]))
+  new_path3 = list(zip(*[p3(t) for t in np.arange(0, 49.1, .5)]))
 
   fig, ax = plt.subplots(1)
   ax.plot(*paths.transpose(2,1,0), color='g', linewidth=0.3)
   ax.add_patch(patches.Circle((5, 5), radius=1.5))
+  ax.plot(*new_path1, color='m', linewidth=1.3)
+  ax.plot(*new_path2, color='b', linewidth=1.3)
+  ax.plot(*new_path3, color='r', linewidth=1.3)
+
   ax.axis("equal")
   plt.show()
 

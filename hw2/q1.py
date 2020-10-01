@@ -13,7 +13,7 @@ def table(xs, fxs):
 		layer = (fx0 - fx1) / (x0 - x1)
 		return layer, x0[:-1], x1[1:]
 
-	table = np.zeros((n, n))
+	table = np.zeros((n, n), dtype=complex)
 	table[0] = fxs
 	next_x0, next_x1 = xs[:-1], xs[1:]
 	for i in range(1, n):

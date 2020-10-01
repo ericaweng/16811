@@ -74,13 +74,11 @@ def get_interpolated_path(paths, x_0, y_0):
           def p(t):
             assert np.all(t <= traj.shape[0]) and np.all(0 <= t)
             int_t = t.astype(np.int)
-            # if close_enough(int_t, t):
-            #   return traj[int_t, :2]
-            # else:
             low_t = np.floor(t).astype(np.int)
-            high_t = np.ceil(t).astype(np.int)
+            high_t = np.maximum(low_t + 1, np.repeat(traj.shape[0] - 1, low_t.shape[0])) # np.ceil(t).astype(np.int)
             a_low = (t - low_t)[...,np.newaxis].repeat(traj.shape[-1], axis=-1)
             a_high = (high_t - t)[...,np.newaxis].repeat(traj.shape[-1], axis=-1)
+            # print(a_low, a_high, low_t, high_t)
             np.set_printoptions(threshold=np.inf)
             assert np.all(np.abs(a_low + a_high - 1 < 1e-6) + np.abs(a_low + a_high < 1e-6)), "\n{}\n{}".format(a_low + a_high)
             interp_path = a_low * traj[low_t] + a_high * traj[high_t]
@@ -105,8 +103,8 @@ def main():
 
   paths = get_paths()
   p = get_interpolated_path(paths, 2, 3)
-  new_path = p(np.arange(0, 49.01, .5))
-  print(new_path.shape)
+  new_path = p(np.arange(0, 49.05, .1))
+  print(*new_path.T)
   
   fig, ax = plt.subplots(1)
   ax.plot(*paths.transpose(2,1,0), color='g', linewidth=0.3)
