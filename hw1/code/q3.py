@@ -5,15 +5,15 @@ from ps1 import latex_print
 
 
 def solve(a, b):
-  # a = np.array([[1,1,1],[10,2,9],[8,0,7]])
+  a = np.array([[1,1,1],[10,2,9],[8,0,7]])
+  b = np.array([1,3,1])
   # b = np.array([3,2,2])
-  # b = np.array([1,3,1])
   # a = np.array([[10,-10,0],[0,-4,2],[2,0,-5]])
   # b = np.array([10,2,13]) 
 
   U, s, Vh = np.linalg.svd(a)
   # x = np.linalg.solve(a, b)
-  # print("U:\n", U, "\ns:\n", s, "\nVh:\n", Vh)
+  print("U:\n", U, "\ns:\n", s, "\nVh:\n", Vh)
 
   sigma = s[s > 1e-3]
   k = sigma.shape[0]
@@ -49,10 +49,16 @@ def check_problem3():
   v = np.array([1,2,0])
   w = np.array([1,9,7])
 
-  print(v.dot(ax_b))
-  latex_print(v)
-  latex_print(w)
-  print(w.dot(ax_b))
+  A = np.array([[10, -10, 0],
+                [0, -4, 2], 
+                [2, 0, -5]])
+  b = np.array([10,2,13]).T
+  print(solve(A, b))
+
+  # print(v.dot(ax_b))
+  # latex_print(v)
+  # latex_print(w)
+  # print(w.dot(ax_b))
 
 
 if __name__ == '__main__':

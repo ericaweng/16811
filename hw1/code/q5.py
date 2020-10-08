@@ -48,5 +48,33 @@ def main():
     assert close_enough(Rs[i], R) and close_enough(ts[i], t), "failed. Rs: {} vs {}\t ts: {} vs. {}".format(Rs[i], R, ts[i], t)
     print("R:{}\nt:{}\npassed".format(R, t))
 
+
 if __name__ == '__main__':
-  main()
+  P=   np.array([[0.064, 0.265, 0.576],
+  [0.692, 0.523, 0.929],
+  [0.567, 0.094, 0.319]])
+  print(P.mean(axis=1))
+  print(P.mean(axis=0))
+  # Q=   np.array([[-0.462,  0.992,  0.388],
+  # [-1.12,   1.348  ,0.223],
+  # [-0.578 , 1.019, -0.19 ]])
+  # R =  np.array([[-0.60613632,  0.3061401,  -0.73408243],
+  # [-0.76224637 ,-0.48713716,  0.42623686],
+  # [-0.22711064 , 0.8179093,   0.5286257 ]])
+  # t =   np.array([[-0.09021456],
+  # [ 0.63093367],
+  # [ 0.01753445]])
+
+
+  # print(R.dot(P) + t)
+  print(Q)
+
+
+  # P,Q,R,t = (np.array(a) for a in [P,Q,R,t])
+  # myR, myt = problem5(P,Q)
+
+  # print(myt.T)
+  # print(close_enough?(P.dot(R) + t, Q))
+  # print(Q.dot(myR) + myt)
+
+  # main()
