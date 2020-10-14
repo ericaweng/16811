@@ -29,10 +29,10 @@ def q4d():
     num_points = Xy.shape[0]
     k = 10
     num_planes = 4
-    num_iters = 7000
+    num_iters = 8000
     distance_thresh = .12
-    distance_thresh_elim = .05
-    inlier_num_thresh = num_points // 6
+    distance_thresh_elim = .03
+    inlier_num_thresh = int(num_points / 5.9)
     print("inlier_num_thresh:", inlier_num_thresh)
 
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
@@ -67,16 +67,18 @@ def q4d():
                     best_fit = a, b, -c
                     best_err = mean_distance
             i += 1
-            if i == 10000:
-                print("breaking")
-                exit()
-                break 
+            # if i == 10000:
+            #     print("breaking")
+            #     exit()
+            #     break 
+
+        inlier_num_thresh = int(num_points / (5 + plane_i * .5))
+        print("inlier_num_thresh:", inlier_num_thresh)
 
         # print plane equation
         plane = "{:0.3f}x + {:0.3f}y - z = {:0.3f}".format(*best_fit)
         print(plane)
         print(best_err)
-        planes.append(plane)
 
         Xy_plane = Xy[distance_save < distance_thresh_elim]
         print("number in this plane:", Xy_plane.shape)
@@ -88,12 +90,15 @@ def q4d():
         Xy = Xy[distance_save > distance_thresh_elim]
         print("number of samples left:", Xy.shape)
 
-        # plot
-        surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        planes.append((best_fit, Xy_plane))
 
-    scatter = ax.scatter(Xy[:, 0], Xy[:, 1], Xy[:, 2])
-    plt.savefig("10.png")
-    print("\n".join(planes))
+        # plot
+        # surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+
+    # scatter = ax.scatter(Xy[:, 0], Xy[:, 1], Xy[:, 2])
+    # plt.savefig("10.png")
+    np.savez("planes.npz", planes)
+    print("\n".join(["{:0.3f}x + {:0.3f}y - z = {:0.3f}".format(*best_fit) for best_fit, _ in planes]))
 
 
 def q4c():
@@ -128,5 +133,26 @@ def q4c():
     scatter = ax.scatter(Xyi[:, 0], Xyi[:, 1], Xyi[:, 2])
     plt.show()
 
+
+def viz_planes():
+    with open("cluttered_hallway.txt") as f:
+        Xy1 = np.array(list(map(lambda x: list(map(float, x.split())), f.read().splitlines())))
+
+    planes = np.load("planes.npz", allow_pickle=True)
+
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+
+    # print(planes.get('arr_0'))
+    for plane, Xy in planes.get('arr_0'):
+        a, b, c_neg = plane
+        X, Y = np.meshgrid(Xy[::20, 0], Xy[::20, 1])
+        Z = a * X + b * Y - c_neg
+        surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+
+    scatter = ax.scatter(Xy1[:, 0], Xy1[:, 1], Xy1[:, 2])
+    plt.show()
+
+
 if __name__ == '__main__':
-    q4d()
+    # q4d()  
+    viz_planes()
