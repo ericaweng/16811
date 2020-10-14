@@ -18,7 +18,31 @@ def fit(Xy):
 
     return a, b, c
 
-def main():
+def q4d():
+    with open("cluttered_table.txt") as f:
+        Xy = np.array(list(map(lambda x: list(map(float, x.split())), f.read().splitlines())))
+
+    a, b, c = fit(Xy)
+    
+    remaining_points = points
+    for plane_i in range(4):
+        distance_thresh = .12
+        for i in range(50):
+            remaining_points = np.concatenate((Xy, np.ones((Xy.shape[0], 1))), axis=-1)
+            distance = np.abs(points.dot(np.array([a, b, -1, c]))) / np.sqrt(a*a + b*b + 1)
+            mean_distance = np.mean(distance)
+            print("mean_distance:", mean_distance)
+            Xyi = Xy[distance < distance_thresh]
+            print("number of samples left:", Xyi.shape)
+            a, b, c = fit(Xyi)
+            distance_thresh *= .9
+
+        distance_thresh = .12
+        remaining_points = Xy[distance > distance_thresh]
+
+
+
+def q4c():
     # with open("clear_table.txt") as f:
     with open("cluttered_table.txt") as f:
         Xy = np.array(list(map(lambda x: list(map(float, x.split())), f.read().splitlines())))
@@ -37,12 +61,14 @@ def main():
         a, b, c = fit(Xyi)
         distance_thresh *= .9
 
+    # print plane equation
+    print("{:0.3f}x + {:0.3f}y - z = {:0.3f}".format(a, b, -c))
+
     # make data for plotting
     X, Y = np.meshgrid(Xy[:, 0], Xy[:, 1])
     Z = a * X + b * Y  + c
-    print("{:0.3f}x + {:0.3f}y - z = {:0.3f}".format(a, b, -c))
-    # exit()
 
+    # plot
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
     surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
     scatter = ax.scatter(Xyi[:, 0], Xyi[:, 1], Xyi[:, 2])
