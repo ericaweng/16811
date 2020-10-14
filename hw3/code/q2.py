@@ -36,57 +36,52 @@ def main():
 		s = list(iterable)
 		return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(start, len(s)+1))
 
-	ps = list(powerset(bases_fns))
-	ps_names = list(powerset(bases_names))
-	# print(len(ps))
-
-	lowest_loss = np.inf
-	best_equation = ""
+	num = 12
+	ps = list(powerset(bases_fns))[:num]
+	ps_names = list(powerset(bases_names))[:num]
+	print("powerset size:", len(ps))
 
 	import multiprocessing
 	num_cores = multiprocessing.cpu_count() - 10
+	print("num_cores:", num_cores)
 	pool = multiprocessing.Pool(num_cores)
-	args_list = []
-	results = pool.map(f, args_list)
+	args_list = list(zip([[f(x) for f in bases_fns] for bases_fns in ps], ps_names, [points for _ in ps]))
+	
+	print("done with args_list")
+	results = pool.map(opt1, args_list)
 
-	# def
+	k = 25
+	# smallest_i = np.argpartition(results, k, axis=0)[:,0]
+	top = sorted(results)[:k]
+	# results[smallest_i[:k]]]
+	print("".join(["{}\t{}\n".format(loss, equation) for loss, equation in top]))
+	import ipdb; ipdb.set_trace()
 
-	for ps_i, (bases_fns, bases_names) in enumerate(zip(ps, ps_names)):
-		# if ps_i == 10:
-		# 	break
+def opt1(args):
+	bases, bases_names, points = args
+	basis = torch.FloatTensor(np.stack(bases))
+	y = torch.FloatTensor(points)
 
-		bases = [f(x) for f in bases_fns]
-		basis = torch.FloatTensor(np.stack(bases))
-		y = torch.FloatTensor(points)
+	coeff = nn.Parameter(torch.FloatTensor(np.zeros(len(bases))))#np.random.randn(len(bases))))
 
-		coeff = nn.Parameter(torch.FloatTensor(np.zeros(len(bases))))#np.random.randn(len(bases))))
+	optimizer = optim.SGD([coeff], lr=.5)
 
-		optimizer = optim.SGD([coeff], lr=0.1)
+	lamb = 10.
+	for _ in range(1000):
+		loss = F.mse_loss(y, basis.T.matmul(coeff))# + torch.mean(lamb * (coeff))
+		optimizer.zero_grad()
+		loss.backward()
+		optimizer.step()
 
-		lamb = 10.
-		for _ in range(1000):
-			loss = F.mse_loss(y, basis.T.matmul(coeff))# + torch.mean(lamb * (coeff))
-			optimizer.zero_grad()
-			loss.backward()
-			optimizer.step()
+	loss_numpy = loss.data.numpy().item()
+	equation = " + ".join(["{:0.4f}\\cdot {}".format(c.detach().numpy().item(), bn) for bn, c in zip(bases_names, coeff)])
+	# equation = " + ".join(["{:0.4f}\\cdot {}".format(c.detach().numpy().item(), bn) for bn, c in zip(bases_names, coeff)])
 
-		loss_numpy = loss.data.numpy().item()
-		equation = " + ".join(["{:0.4f}\\ {}".format(c.detach().numpy().item(), bn) for bn, c in zip(bases_names, coeff)])
-		# equation = " + ".join(["{:0.4f}\\cdot {}".format(c.detach().numpy().item(), bn) for bn, c in zip(bases_names, coeff)])
+	# print("loss:", loss_numpy)
+	return loss_numpy, equation
 
-		print("loss:", loss_numpy)
-		if loss_numpy < lowest_loss:
-			lowest_loss = loss_numpy 
-			best_equation = equation
-		print(equation)
-		# print("$L2$-error:", torch.mean((f(x) - p(x))**2))
-		# print("$L-\\infty$-error:",  torch.max(torch.abs(f(x) - p(x))))
 
-	print()
-	print("lowest_loss:", lowest_loss)
-	print("best_equation:", best_equation)
-
-if __name__ == '__main__':
+def m():
 
 	x = np.arange(0, 1.01, .01)
 	bases = [1 + 0*x, x, x**2, x**3, x**4,  x**5,  x**6, 
@@ -122,5 +117,5 @@ if __name__ == '__main__':
 	print(rank)
 	print(s)
 
-	exit(0)
+if __name__ == '__main__':
 	main()

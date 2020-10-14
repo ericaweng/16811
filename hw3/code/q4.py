@@ -4,40 +4,47 @@ from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator
-from mpl_toolkits.mplot3d import Axes3D # <--- This is important for 3d plotting 
+from mpl_toolkits.mplot3d import Axes3D
 
 import numpy as np
 
+
 def main():
-	with open("clear_table.txt") as f:
-		Xy = np.array(list(map(lambda x: list(map(float, x.split())), f.read().splitlines())))
-	xs = Xy[:, :2]
-	zs = Xy[:, 2]
-	reg = LinearRegression().fit(xs, zs)
-	coef = reg.coef_
-	print(coef)
+    # with open("clear_table.txt") as f:
+    with open("cluttered_table.txt") as f:
+        Xy = np.array(list(map(lambda x: list(map(float, x.split())), f.read().splitlines())))
 
-	fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    xs = Xy[:, :2]
+    zs = Xy[:, 2]
+    reg = LinearRegression().fit(xs, zs)
+    a, b = reg.coef_
+    c = reg.intercept_
 
-	# Make data.
-	X, Y = np.meshgrid(Xy[:, 0], Xy[:, 1])
-	Z = coef[0] * X + coef[1] * Y
 
-	# Plot the surface.
-	surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
-	                       linewidth=0, antialiased=False)
-	scatter = ax.scatter(*np.split(Xy, Xy.shape[1], axis=1))
+    points = np.concatenate((Xy, np.ones((Xy.shape[0], 1))), axis=-1)
+    distance = np.abs(points.dot(np.array([a, b, -1, c]))) / np.sqrt(a*a + b*b + 1)
+    mean_distance = np.mean(distance)
+    print(mean_distance)
 
-	# Customize the z axis.
-	# ax.set_zlim(-1.01, 1.01) 
-	# ax.zaxis.set_major_locator(LinearLocator(10))
-	# A StrMethodFormatter is used automatically
-	# ax.zaxis.set_major_formatter('{x:.02f}')
+    # part 4c
+    distance_thresh = .01
+    newXy = np.tile((distance < distance_thresh)[...,np.newaxis], (1, Xy.shape[-1])) * Xy
+    print(distance < distance_thresh)
+    xs = newXy[:, :2]
+    zs = newXy[:, 2]
+    reg = LinearRegression().fit(xs, zs)
+    a, b = reg.coef_
+    c = reg.intercept_
 
-	# Add a color bar which maps values to colors.
-	# fig.colorbar(surf, shrink=0.5, aspect=5)
+    # make data for plotting
+    X, Y = np.meshgrid(xs[:, 0], xs[:, 1])
+    Z = a * X + b * Y  + c
+    print("{:0.3f}x + {:0.3f}y - z = {:0.3f}".format(a, b, -c))
 
-	plt.show()
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+    scatter = ax.scatter(xs[:, 0], xs[:, 1], zs)
+    plt.show()
 
 if __name__ == '__main__':
-	main()
+    main()
