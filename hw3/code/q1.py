@@ -25,13 +25,15 @@ def main():
 	f = lambda x: np.sin(x) - 0.5
 	p = quad(a, b, c)
 
-	optimizer = optim.SGD([a,b,c], lr=.008)
+	optimizer = optim.SGD([a,b,c], lr=.01)
 
-	x = torch.FloatTensor(np.arange(-np.pi/2, np.pi/2, .000001))
+	deltas = np.arange(-np.pi/2, np.pi/2, .000001)
+	x = torch.FloatTensor(deltas)
 
 	for _ in range(1200):
-		loss = torch.mean((f(x) - p(x))**2)
+		# loss = torch.mean((f(x) - p(x))**2)
 		# loss = torch.max(torch.abs((f(x) - p(x))))
+		loss = torch.max(torch.abs((f(x) - p(x))))
 		print(loss.data.numpy().item())
 
 		optimizer.zero_grad()
@@ -39,8 +41,9 @@ def main():
 		optimizer.step()
 
 	# torch.mean((f(x) - p(x))**2)
+	# F.mse_loss
 	print("p(x) = {:0.9f}x^2 + {:0.4f}x + {:0.4f}".format(a.data.numpy().item(), b.data.numpy().item(),c.data.numpy().item()))
-	print("$L2$-error:", F.mse_loss(f(x), p(x)).data.numpy().item())
+	print("$L2$-error:", torch.sqrt(.000001 * torch.sum((f(x) - p(x)) ** 2)).data.numpy().item())
 	print("$L-\\infty$-error:", torch.max(torch.abs(f(x) - p(x))).data.numpy().item())
 
 if __name__ == '__main__':
