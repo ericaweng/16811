@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 
 def main():
-    # q1d()
-    q1c()
+    q1d()
+    # q1c()
 
 def q1d():
     """ab4 impl"""
@@ -50,20 +50,20 @@ def q1c():
     # y = lambda x: x ** (1/3)
     f = lambda y: 1 / (3 * y**2)
 
-    for xi in x_is[::-1][:-1]:
+    for _ in range(len(x_is)-1):
     #     k_i = y_t + h * np.sum(betas[i] if i * f(k_))
     #     y_t = y_t + h * sum()
         k1 = h * f(y_i)
-        k2 = h * f(y_i + 1/2*k1)
-        k3 = h * f(y_i + 1/2*k2)
-        k4 = h * f(y_i + k3)
+        k2 = h * f(y_i - 1/2*k1)
+        k3 = h * f(y_i - 1/2*k2)
+        k4 = h * f(y_i - k3)
         y_i = y_i - (1/6*k1 + 1/3*k2 + 1/3*k3 + 1/6*k4)
         y_is.append(y_i)
 
     y_is = y_is[::-1]
 
     print_table(x_is, y_is, y_i_trues)
-    plot(x_is, y_i_trues, y_is)
+    # plot(x_is, y_i_trues, y_is)
     # plot(x_is, y_i_trues, y_is, q1b())
     return y_is
 
