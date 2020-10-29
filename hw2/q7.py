@@ -27,7 +27,13 @@ def main():
 	fig, ax = plt.subplots()
 	CS = ax.contour(X, Y, Z, 0)
 	CS2 = ax.contour(X, Y, Z2, 0)
-	# ax.axis("equal")
+	ax.axis("equal")
+	plt.tight_layout()
+	x = [1/4 *(4 - np.sqrt(2* (2 + np.sqrt(2* (np.sqrt(5) - 1)) - np.sqrt(10 *(np.sqrt(5) - 1))))), 
+	 1/4 *(4 + np.sqrt(2* (2 - np.sqrt(2 *(np.sqrt(5) - 1)) + np.sqrt(10 *(np.sqrt(5) - 1)))))]
+	y = [ 1/4* (5 - np.sqrt(5) - np.sqrt(2 *(np.sqrt(5) - 1))),
+	 1/4* (5 - np.sqrt(5) + np.sqrt(2 *(np.sqrt(5) - 1)))]
+	ax.scatter(x, y, color='r')
 	# ax.clabel(CS, inline=1, fontsize=10)
 	# ax.set_title('Simplest default with labels')
 	plt.show()

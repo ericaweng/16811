@@ -42,7 +42,7 @@ for i in range(tt):
     path_init_values[i] = obs_cost[int(np.floor(path_init[i, 0])), int(np.floor(path_init[i, 1]))]
 
 # Plot 2D
-def plot2d(path_init, i=None, q_num=None, show=False):
+def plot2d(path_init, q_num=None, i=None, show=False):
 	plt.imshow(obs_cost.T)
 	plt.plot(path_init[:, 0], path_init[:, 1], 'ro')
 	plt.tight_layout()
@@ -69,16 +69,16 @@ path = path_init
 
 ## 6a gradient descent
 def q6a():
-	alpha = 1
-	for _ in range(600):
-		x, y = np.clip(np.round(path.T), 0, N).astype(np.int)
-		new_path_x = path.T[0] - alpha * gx[x, y]
-		new_path_y = path.T[1] - alpha * gy[x, y]
-		path[1:-1] = np.stack([new_path_x, new_path_y]).T[1:-1]
+	alpha = .1
+	for _ in range(4000):
+		x, y = np.clip(np.round(path.T[:,1:-1]), 0, N-1).astype(np.int)
+		new_path_x = path.T[0,1:-1] - alpha * gx[x, y]
+		new_path_y = path.T[1,1:-1] - alpha * gy[x, y]
+		path[1:-1] = np.stack([new_path_x, new_path_y]).T
 		# print(path)
 		path_values = obs_cost[int(np.round(path[i, 0])), int(np.round(path[i, 1]))]
 		# plot3d(path, path_values)
-	plot2d(path)
+	plot2d(path, '6a','4')
 
 
 def q6b(gx, gy, path):
@@ -122,7 +122,8 @@ def q6c(gx, gy, path):
 
 
 def main():
-	q6c(gx, gy, path)
+	# q6c(gx, gy, path)
+	q6a()#gx, gy, path)
 
 if __name__ == '__main__':
 	main()

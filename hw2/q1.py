@@ -47,15 +47,35 @@ def divided_diffs(xs, fxs):
 			table[(i, j)] = ( np.multiply((x - xs[j]), poly_vect(i, j-1)) - np.multiply((x - xs[i]), poly_vect(i+1, j))) / (xs[i] - xs[j])
 			return table[(i, j)]
 
+		# def poly_vect_d(i, j):
+		# 	if (i, j) in table:
+		# 		assert (i, j) in dtable
+		# 		return table[(i, j)], dtable[(i, j)]
+		# 	if i == j:
+		# 		table[(i, j)] = np.full(x.shape[0], fxs[i])
+		# 		dtable[(i, j)] = np.full(x.shape[0], fxs[i])
+		# 		return table[(i, j)], dtable[(i, j)]
+
+		# 	pvd_ij1, dpvd_ij1 = poly_vect_d(i, j-1)
+		# 	pvd_i1j, dpvd_i1j = poly_vect_d(i+1, j)
+		# 	table[(i, j)] = ((x - xs[j]) * pvd_ij1 - (x - xs[i]) * pvd_i1j) / (xs[i] - xs[j])
+		# 	dtable[(i, j)] = ((x - xs[j]) * dpvd_ij1 - (x - xs[i]) * dpvd_i1j) / (xs[i] - xs[j])
+		# 	return table[(i, j)], dtable[(i, j)]
+
 		if isinstance(x, float):
 			table = np.full((n, n), np.nan)
 			ans = poly(0, n-1)
 		else:
+		# elif False:
 			x.shape
 			table = {}
 			ans = poly_vect(0, n-1)
-			# print(table)
-			# exit()
+		# tried to compute derivative fn using divided diffs
+		# else:
+		# 	x.shape
+		# 	table = {}
+		# 	dtable = {}
+		# 	ans = poly_vect_d(0, n-1)
 		return ans
 
 	return polyx
@@ -93,8 +113,11 @@ def error_est(p_n, f, low=-1, high=1, N=1000):
 	and an actual function f over the interval [low, high]"""
 	h = 2 / N
 	xs = np.arange(low, high + h, h)
-	max_En = np.max(np.abs(f(xs) - p_n(xs)))
-	return max_En
+	pn = p_n(xs)
+	max_En = np.max(np.abs(f(xs) - pn))
+	max_En_i = np.argmax(np.abs(f(xs) - pn))
+	max_grad = np.max(np.abs(np.gradient(pn)))
+	return max_En, max_En_i, max_grad
 
 def q1d():
 	print("q1d:")
@@ -104,10 +127,14 @@ def q1d():
 		i = np.arange(n+1)
 		x_i = i * 2/n - 1
 		p = divided_diffs(x_i, f(x_i))
-		E_n = error_est(p, f)
-		print("n: {}\tE_n: {:0.2f}".format(n, E_n))
+		E_n, En_i, max_grad = error_est(p, f)
+		# print("n: {}\tE_n: {:0.2f}".format(n, E_n))
+		print("n: {:1.0f}\tE_n: {:0.3f}\tmax gradient: {:0.4f}\tmax gradient * 2 / n: {:0.4f}".format(
+			n, E_n, max_grad, max_grad * 2 / n))
 
 def main():
+	q1d()
+	exit()
 	divider = "\n"+"#" * 20
 	qs = [q1b, q1c, q1d]
 	np.set_printoptions(2)

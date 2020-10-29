@@ -44,7 +44,7 @@ def main():
 			best_loss = loss.data.numpy().item()
 			best_L2_loss = torch.sqrt(.000001 * torch.sum((f(x) - p(x)) ** 2))
 			# best_model = copy.deepcopy(p) # a.data.numpy().item(), b.data.numpy().item(), c.data.numpy().item() 
-			print(loss.data.numpy().item())
+			# print(loss.data.numpy().item())
 
 		optimizer.zero_grad()
 		loss.backward()
