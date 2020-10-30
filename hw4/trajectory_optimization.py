@@ -70,7 +70,7 @@ path = path_init
 ## 6a gradient descent
 def q6a():
 	alpha = .1
-	for _ in range(4000):
+	for _ in range(600):
 		x, y = np.clip(np.round(path.T[:,1:-1]), 0, N-1).astype(np.int)
 		new_path_x = path.T[0,1:-1] - alpha * gx[x, y]
 		new_path_y = path.T[1,1:-1] - alpha * gy[x, y]

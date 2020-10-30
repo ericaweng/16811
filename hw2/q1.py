@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def table(xs, fxs):
@@ -113,11 +114,15 @@ def error_est(p_n, f, low=-1, high=1, N=1000):
 	and an actual function f over the interval [low, high]"""
 	h = 2 / N
 	xs = np.arange(low, high + h, h)
-	pn = p_n(xs)
-	max_En = np.max(np.abs(f(xs) - pn))
-	max_En_i = np.argmax(np.abs(f(xs) - pn))
-	max_grad = np.max(np.abs(np.gradient(pn)))
-	return max_En, max_En_i, max_grad
+	fs = f(xs)
+	pns = p_n(xs)
+	# plt.plot(xs, fs)
+	# plt.plot(xs, pns)
+	# plt.show()
+	max_En = np.max(np.abs(fs - pns))
+	max_En_i = np.argmax(np.abs(fs - pns))
+	max_grad_p = np.max(np.abs(np.gradient(pns)))
+	return max_En, max_En_i, max_grad_p
 
 def q1d():
 	print("q1d:")
@@ -127,13 +132,30 @@ def q1d():
 		i = np.arange(n+1)
 		x_i = i * 2/n - 1
 		p = divided_diffs(x_i, f(x_i))
-		E_n, En_i, max_grad = error_est(p, f)
+		E_n, En_i, max_grad_p = error_est(p, f)
+		# plt.savefig("1d-n-{}.png".format(n))
+		# plt.clf() 
 		# print("n: {}\tE_n: {:0.2f}".format(n, E_n))
-		print("n: {:1.0f}\tE_n: {:0.3f}\tmax gradient: {:0.4f}\tmax gradient * 2 / n: {:0.4f}".format(
-			n, E_n, max_grad, max_grad * 2 / n))
+		print("n: {:1.0f}\tE_n: {:0.3f}\tmax grad p: {:0.4f}\tmax grad p * 2 / n: {:0.4f}".format(
+			n, E_n, max_grad_p, max_grad_p * 2 / n))
+
+def q1d_resub():
+	h = 0.005
+	low = -1
+	high = 1
+	n = 40
+	
+	xs = np.arange(low, high + h, h)
+	f = lambda x: 2 / (1 + 9 * x**2)
+	fs = f(xs)
+	for i in range(n):
+		fs = np.gradient(fs)
+		max_grad_f = np.max(np.abs(fs))
+		print(max_grad_f)
+
 
 def main():
-	q1d()
+	q1d_resub()
 	exit()
 	divider = "\n"+"#" * 20
 	qs = [q1b, q1c, q1d]
