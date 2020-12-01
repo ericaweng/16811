@@ -117,5 +117,42 @@ def m():
 	print(rank)
 	print(s)
 
+
+def try_2():
+	with open("problem2.txt") as f:
+		points = np.array(list(map(float, f.read().split())))
+
+	x = np.arange(0, 1.01, .01)
+	bases = np.array([1 + 0*x, x, x**2, x**3, x**4,  x**5,  x**6, 
+					  np.cos(np.pi*x), np.sin(np.pi*x), 
+					  np.cos(2*np.pi*x), np.sin(2*np.pi*x), 
+					  np.cos(3*np.pi*x), np.sin(3*np.pi*x),
+					  np.cos(4*np.pi*x), np.sin(4*np.pi*x),
+					  np.cos(5*np.pi*x), np.sin(5*np.pi*x)])
+	bases_names = ["1", "x", "x^2", "x^3", "x^4","x^5","x^6", 
+				"\\cos(\\pi x)", "\\sin(\\pi x)", "\\cos(2\\pi x)", "\\sin(2\\pi x)", 
+				"\\cos(3\\pi x)", "\\sin(3\\pi x)",	"\\cos(4\\pi x)", "\\sin(4\\pi x)",
+				"\\cos(5\\pi x)", "\\sin(5\\pi x)"]
+	# coeffs = np.linalg.solve(bases @ bases.T, points @ bases.T)
+	coeffs = np.linalg.solve(bases @ bases.T, bases @ points )
+	# coeffs = np.linalg.inv(bases @ bases.T).dot(bases).dot(points)
+
+	new_bases = bases
+	string = " + ".join(["{:0.2f}{}".format(coeff, name) for coeff, name in zip(coeffs, bases_names) if np.abs(coeff) > 1e-1])
+	print(string)
+
+	# eliminate small coeffs and refine
+	# for i in range(3): 
+	survivor_is = np.where(np.abs(coeffs) > 1e-2)
+	new_bases = new_bases[survivor_is]
+	new_bases_names = np.array(bases_names)[survivor_is]
+	coeffs = np.linalg.solve(new_bases @ new_bases.T, new_bases @ points)
+	# print(np.around(coeffs, decimals=1))
+	string = " + ".join(["{:0.2f}{}".format(coeff, name) for coeff, name in zip(coeffs, new_bases_names) if np.abs(coeff) > 1e-1])
+	print(string)
+
+
 if __name__ == '__main__':
+	print(try_2())
+	exit()
 	main()
