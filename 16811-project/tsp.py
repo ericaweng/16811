@@ -72,20 +72,29 @@ def SA(points, init_order, initial_temp, final_temp, alpha):
     N = init_order.shape[0]
 
     all_orders = [init_order]
-    scores = []
+    all_scores = []
 
+    best_score = float("inf")
+    best_order = None
+    best_iter = 0
+    i = 0
     while current_temp > final_temp:
         new_order = propose(curr_order, max(N//10, 1))
         new_score = score(points, new_order)
         cost_diff = old_score - new_score
         if cost_diff > 0 or np.random.uniform(0, 1) < np.exp(cost_diff / current_temp):
-            scores.append(new_score)
+            all_scores.append(new_score)
             curr_order = new_order
             all_orders.append(new_order)
+        if new_score < best_score:
+            best_order = curr_order
+            best_score = new_score
+            best_iter = i
         current_temp *= alpha
+        i += 1
 
-    print("SA took:", len(scores), "iterations")
-    return curr_order, all_orders, scores
+    print("SA took:", len(all_scores), "iterations")
+    return best_order, best_score, best_iter, all_orders, all_scores
 
 def score(points, order):
     points_in_order = points[order]
@@ -105,18 +114,24 @@ alpha = .999
 points = np.random.uniform(low, high, (N, 2))
 
 order = initialize_order()
-final_order, all_orders, scores = SA(points, order, initial_temp, final_temp, alpha)
+best_order, best_score, best_iter, all_orders, scores = SA(points, order, initial_temp, final_temp, alpha)
+
+print("best_order:", best_order, "best_score:", best_score, "best_iter:", best_iter)
+# exit()
 
 # plot scores of accepted SA proposals
 # ema_scores = ema(scores, 10)
 # plt.plot(np.arange(len(ema_scores)), ema_scores)
 # plt.show()
 
+
+#### ANIMATION #####
 # set up animation
 fig, ax = plt.subplots(1, 1)
 ax.set_xlim(low, high)
 ax.set_ylim(low, high)   
-ln, = ax.plot(*points[final_order].T)
+ln, = ax.plot(*points.T, 'ro')
+ln, = ax.plot(*points[all_orders[0]].T)
 text = ax.text(low + 1, high - 3, 'SA step: {}'.format(0), fontsize=10)
 # plot last order of SA
 # ax.plot(*points[all_orders[0]].T)
@@ -126,11 +141,11 @@ num_frames_to_show = 10
 interval = len(all_orders) // num_frames_to_show
 some_orders = all_orders[::interval]
 last_one_times = 10
-some_orders = some_orders + some_orders[-1:] * last_one_times
+some_orders = some_orders + [best_order] * last_one_times
 
 def update(frame):
     ln.set_data(*points[some_orders[frame]].T)
-    text.set_text("SA step: {}".format(frame * interval if frame < len(some_orders) - last_one_times else (len(some_orders) - last_one_times - 1) * interval))
+    text.set_text("SA step: {}".format(frame * interval if frame < len(some_orders) - last_one_times else best_iter))
     return ln, text
 
 animation = anim.FuncAnimation(fig, update, frames=len(some_orders), interval=400)
