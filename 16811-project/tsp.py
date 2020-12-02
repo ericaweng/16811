@@ -2,6 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from scipy.spatial.distance import cdist
+import torch
+import time
+
 
 # metrics for measurement
 ## same time
@@ -33,11 +36,6 @@ def ema(s, n=1000):
         j = j + 1
         ema.append(tmp)
     return ema
-
-
-def initialize_order():
-    order = np.random.permutation(np.arange(N))
-    return order 
 
 def SA(points, init_order, initial_temp, final_temp, alpha):
     # pair_distance = cdist(points, points)
@@ -100,11 +98,33 @@ def score(points, order):
     points_in_order = points[order]
     a = np.concatenate([points_in_order[1:], points_in_order[:1]])
     b = points_in_order
-    distance = np.linalg.norm(a - b, axis=1)
-    return np.mean(distance)
+    distance = np.linalg.norm(a - b, axis=-1)
+    return np.sum(distance, axis=0)
+
+
+def test_SA(points, initial_temp, final_temp, alpha):
+    order = np.random.permutation(N)
+    best_order, best_score, best_iter, all_orders, scores = \
+        SA(points, order, initial_temp, final_temp, alpha)
+    # plot scores of accepted SA proposals
+    # ema_scores = ema(scores, 10)
+    # plt.plot(np.arange(len(ema_scores)), ema_scores)
+    # plt.show()
+    print("SA\tbest_order:", best_order, "best_score:", best_score, "best_iter:", best_iter)
+    return best_order, best_score
+
+def random_sampling(N, num_samples=1000):
+    order = np.stack([np.random.permutation(N) for _ in range(num_samples)], axis=-1)
+    sc = score(points, order)
+    min_score_i = np.argmin(sc)
+    best_order = order[:,min_score_i]
+    best_score = sc[min_score_i]
+    print("best order:", best_order, "score:", best_score)
+    return best_order, best_score
+    # return best
 
 np.random.seed(0)
-N = 10
+N = 20
 low = -30
 high = 30
 
@@ -113,45 +133,52 @@ final_temp = .1
 alpha = .999
 points = np.random.uniform(low, high, (N, 2))
 
-order = initialize_order()
-best_order, best_score, best_iter, all_orders, scores = SA(points, order, initial_temp, final_temp, alpha)
+best_orders = []
+start = time.time()
+best_order, best_score = random_sampling(N, 10000)
+print("random_sampling took:", time.time() - start)
+best_orders.append(best_order)
 
-print("best_order:", best_order, "best_score:", best_score, "best_iter:", best_iter)
-# exit()
+start = time.time()
+best_order, best_score = test_SA(points, initial_temp, final_temp, alpha)
+print("SA took:", time.time() - start)
+best_orders.append(best_order)
 
-# plot scores of accepted SA proposals
-# ema_scores = ema(scores, 10)
-# plt.plot(np.arange(len(ema_scores)), ema_scores)
-# plt.show()
-
-
-#### ANIMATION #####
-# set up animation
 fig, ax = plt.subplots(1, 1)
 ax.set_xlim(low, high)
-ax.set_ylim(low, high)   
-ln, = ax.plot(*points.T, 'ro')
-ln, = ax.plot(*points[all_orders[0]].T)
-text = ax.text(low + 1, high - 3, 'SA step: {}'.format(0), fontsize=10)
-# plot last order of SA
-# ax.plot(*points[all_orders[0]].T)
-# plt.show()
-
-num_frames_to_show = 10
-interval = len(all_orders) // num_frames_to_show
-some_orders = all_orders[::interval]
-last_one_times = 10
-some_orders = some_orders + [best_order] * last_one_times
-
-def update(frame):
-    ln.set_data(*points[some_orders[frame]].T)
-    text.set_text("SA step: {}".format(frame * interval if frame < len(some_orders) - last_one_times else best_iter))
-    return ln, text
-
-animation = anim.FuncAnimation(fig, update, frames=len(some_orders), interval=400)
-
-# ffmpeg_writer = anim.writers['ffmpeg']
-# writer = ffmpeg_writer(fps=8, metadata=dict(artist='Me'), bitrate=1800)
-# output_file = "N{}_low{}_high{}_a{}_total{}.mp4".format(N, low, high, alpha, len(scores))
-# animation.save(output_file, writer=writer)
+ax.set_ylim(low, high)
+for best_order in best_orders:
+    ax.plot(*points[best_order].T)
 plt.show()
+
+def animate(points, all_orders):
+    #### ANIMATION #####
+    # set up animation
+    fig, ax = plt.subplots(1, 1)
+    ax.set_xlim(low, high)
+    ax.set_ylim(low, high)   
+    ln, = ax.plot(*points.T, 'ro')
+    ln, = ax.plot(*points[all_orders[0]].T)
+    text = ax.text(low + 1, high - 3, 'SA step: {}'.format(0), fontsize=10)
+    # plot last order of SA
+    # ax.plot(*points[all_orders[0]].T)
+    # plt.show()
+
+    num_frames_to_show = 10
+    interval = len(all_orders) // num_frames_to_show
+    some_orders = all_orders[::interval]
+    last_one_times = 10
+    some_orders = some_orders + [best_order] * last_one_times
+
+    def update(frame):
+        ln.set_data(*points[some_orders[frame]].T)
+        text.set_text("SA step: {}".format(frame * interval if frame < len(some_orders) - last_one_times else best_iter))
+        return ln, text
+
+    animation = anim.FuncAnimation(fig, update, frames=len(some_orders), interval=400)
+
+    # ffmpeg_writer = anim.writers['ffmpeg']
+    # writer = ffmpeg_writer(fps=8, metadata=dict(artist='Me'), bitrate=1800)
+    # output_file = "N{}_low{}_high{}_a{}_total{}.mp4".format(N, low, high, alpha, len(scores))
+    # animation.save(output_file, writer=writer)
+    plt.show()
