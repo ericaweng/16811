@@ -4,7 +4,7 @@ import matplotlib.animation as anim
 from scipy.spatial.distance import cdist
 import torch
 import time
-
+import prim
 
 # metrics for measurement
 ## same time
@@ -101,6 +101,24 @@ def score(points, order):
     distance = np.linalg.norm(a - b, axis=-1)
     return np.sum(distance, axis=0)
 
+# keep_percent is an integer not a fraction
+def cem_opt(f, num_rounds, keep_percent, num_samples):
+    keep_count = int(num_samples*keep_percent/100)
+    history = []
+    for i in range(num_rounds):
+        if i == 0:
+            order = np.stack([np.random.permutation(N) for _ in range(num_samples)], axis=-1)
+        else:
+            x_samples = np.random.normal(best_mu, best_stddev, num_samples)
+            x_samples = np.clip(x_samples, 0, 1) # Force into a range
+        y_samples = f(x_samples)
+        best_xs = x_samples[np.argsort(-y_samples)[:keep_count]]  # I want the top scores (hence negative argsort)
+        best_mu = np.mean(best_xs)
+        best_stddev = np.std(best_xs) + 0.02  # To stop stddev from collapsing too small
+        history.append(x_samples)
+        
+    return best_xs[0], np.array(history)
+    
 
 def test_SA(points, initial_temp, final_temp, alpha):
     order = np.random.permutation(N)
@@ -123,8 +141,18 @@ def random_sampling(N, num_samples=1000):
     return best_order, best_score
     # return best
 
+def graph_surface(N, num_samples=1000):
+    order = np.stack([np.random.permutation(N) for _ in range(num_samples)], axis=-1)
+    sc = score(points, order)
+    min_score_i = np.argmin(sc)
+    best_order = order[:,min_score_i]
+    best_score = sc[min_score_i]
+    print("best order:", best_order, "score:", best_score)
+    return best_order, best_score
+    # return best
+
 np.random.seed(0)
-N = 20
+N = 5
 low = -30
 high = 30
 
@@ -134,6 +162,31 @@ alpha = .999
 points = np.random.uniform(low, high, (N, 2))
 
 best_orders = []
+
+import torch.nn as nn
+import torch.nn.functional as F
+
+def distance_metric(order_A, order_B):
+    pass
+
+
+def GD(points, alpha=0.1):
+    # max over greedy, starting at each node and going
+    N, _ = points.shape
+    vertex_weights = nn.Parameter(torch.Tensor([0,1,2,3,4]))
+    max_num_steps = 20
+    g = prim.Graph(N) 
+    # turn points into edges and weights
+    edge_weights = cdist(points, points)
+    for _ in range(max_num_steps):
+        g.graph = torch.Tensor(edge_weights) + vertex_weights
+        g.graph[:, np.arange(N)] += torch.Tensor(vertex_weights).reshape(-1, 1)
+        g.graph[np.arange(N), np.arange(N)] = 0 
+        cost = g.primMST()
+
+# GD(points)
+
+
 start = time.time()
 best_order, best_score = random_sampling(N, 10000)
 print("random_sampling took:", time.time() - start)
