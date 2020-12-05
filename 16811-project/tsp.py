@@ -132,7 +132,12 @@ def test_SA(points, initial_temp, final_temp, alpha):
     return best_order, best_score
 
 def random_sampling(N, num_samples=1000):
-    order = np.stack([np.random.permutation(N) for _ in range(num_samples)], axis=-1)
+    perms = set()
+    while len(perms) < num_samples:
+        perms.add(" ".join(map(str, np.random.permutation(N))))
+    perms = map(int, perms.split(" "))
+    order = np.stack(perms, axis=-1)  # num_samples, N
+
     sc = score(points, order)
     min_score_i = np.argmin(sc)
     best_order = order[:,min_score_i]
@@ -141,9 +146,30 @@ def random_sampling(N, num_samples=1000):
     return best_order, best_score
     # return best
 
-def graph_surface(N, num_samples=1000):
-    order = np.stack([np.random.permutation(N) for _ in range(num_samples)], axis=-1)
+def graph_surface(N, num_samples=100):
+    perms = set()
+    while len(perms) < num_samples:
+        perms.add(" ".join(map(str, np.random.permutation(N))))
+    perms = list(map(lambda x: list(map(int, x.split(" "))), list(perms)))
+    order = np.array(perms)  # num_samples, N
+
+    def convert_order_to_one_hot(order):
+        num_samples, N = order.shape
+        """returns vector of shape (num_samples, N^2) """
+        vec = np.zeros((num_samples, N, N))
+        for i in range(N):
+            a, b = order[:,i], order[:,(i+1)%N]
+            vec[np.arange(num_samples), a, b] = 1
+            vec[np.arange(num_samples), b, a] = 1
+        i, j = zip(*[(i, j) for i in range(N) for j in range(i)])
+        one_hots = vec[:,i,j]
+        return one_hots
+
+    one_hots = convert_order_to_one_hot(order) 
+
     sc = score(points, order)
+
+
     min_score_i = np.argmin(sc)
     best_order = order[:,min_score_i]
     best_score = sc[min_score_i]
@@ -163,11 +189,13 @@ points = np.random.uniform(low, high, (N, 2))
 
 best_orders = []
 
+graph_surface(N)
+
+exit()
+
 import torch.nn as nn
 import torch.nn.functional as F
 
-def distance_metric(order_A, order_B):
-    pass
 
 
 def GD(points, alpha=0.1):
