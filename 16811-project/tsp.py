@@ -1,7 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
+from mpl_toolkits.mplot3d import Axes3D
+
+import scipy    
 from scipy.spatial.distance import cdist
+from scipy.interpolate import *
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -149,25 +153,63 @@ def random_sampling(N, num_samples=1000):
     return best_order, best_score
     # return best
 
-def graph_surface(N, num_samples=100):
+def graph_surface(N, num_samples=None):
 
-    # get num_samples permutations
-    perms = []
+    # get num_samples permutations, exclude repeats
+    # perms = []
+    # while len(perms) < num_samples:
+    #     perms.append(str(N-1) + " " + " ".join(map(str, np.random.permutation(N-1))))
+    # perms = list(map(lambda x: list(map(int, x.split(" "))), list(set(perms))))
+    # order = np.array(perms)  # num_samples, N
 
-    def get_adj_pairs(l):
-        for i 
-        return set()
-    while len(perms) < num_samples:
-        perms.append(" ".join(map(str, np.random.permutation(N))))
-    perms = list(map(lambda x: list(map(int, x.split(" "))), list(set(perms))))
-    order = np.array(perms)  # num_samples, N
+    def convert_perm_to_edge_set(perm):
+        N = len(perm)
+        vec = np.zeros((num_samples, N, N))
+        edges = set()
+        for i in range(N):
+            a, b = perm[i], perm[(i+1)%N]
+            a, b = max(a, b), min(a, b)
+            edges.add("{}{}".format(a, b))
+        return " ".join(sorted(edges))
+
+    if num_samples is None:
+        num_samples = int(get_total_tours(N))
+        # from sympy.utilities.iterables import multiset_permutations
+        from itertools import permutations
+        # maybe_perms = multiset_permutations(N-1)
+        maybe_perms = permutations(np.arange(N-1)) 
+        perms = set()
+        for perm in maybe_perms:
+            perms.add(convert_perm_to_edge_set(list(perm) + [N-1]))
+        perms = list(map(lambda x: list(map(int, x.split(" "))), list(perms)))
+        order = np.array(perms)  # num_samples, N   
+        print(len(perms))
+    else:
+        assert num_samples > 0
+        perms = set()
+        while len(perms) < num_samples:
+            perm = np.random.permutation(N-1).tolist() + [N-1]
+            perms.add(convert_perm_to_edge_set(perm))
+        perms = list(map(lambda x: list(map(int, x.split(" "))), list(perms)))
+        order = np.array(perms)  # num_samples, N   
 
     def convert_order_to_one_hot(order):
+        num_samples, N = order.shape
+        """returns vector of shape (num_samples, N^2) """
+        vec = np.zeros((num_samples, (N*(N-1)//2)))
+        a, b = order//10, order%10
+        edge_i = (a*(a-1))//2 + b 
+        indices = np.tile(np.arange(num_samples).reshape(-1,1), (1, N))
+        vec[indices, edge_i] = 1
+        return vec
+    
+    def convert_order_to_one_hot2(order):
         num_samples, N = order.shape
         """returns vector of shape (num_samples, N^2) """
         vec = np.zeros((num_samples, N, N))
         for i in range(N):
             a, b = order[:,i], order[:,(i+1)%N]
+            print(a, b, num_samples)
             vec[np.arange(num_samples), a, b] = 1
             vec[np.arange(num_samples), b, a] = 1
         i, j = zip(*[(i, j) for i in range(N) for j in range(i)])
@@ -179,6 +221,7 @@ def graph_surface(N, num_samples=100):
     distances = cdist(one_hots, one_hots, metric="hamming")
 
     def pca_sorta(distances, alpha=0.01, beta=1, max_epochs=1500):
+        """spaces tour points out in 2D euclidean plane"""
         N, _ = distances.shape
         distances = torch.Tensor(distances)  # get the distances squared
         tour_points = nn.Parameter(torch.Tensor(np.random.randn(N, 2)))
@@ -193,28 +236,75 @@ def graph_surface(N, num_samples=100):
                 print("run {}: {}".format(_, error))
         print("finished after {} iters".format(_))
         return tour_points
+
     tour_points = pca_sorta(distances) 
-    points = tour_points.detach().numpy()
+
+    # plot tour_points in euclidean plane
+    tour_points = tour_points.detach().numpy()
     pqs = [(1 + 0.1), (1 - 0.1)]
-    for i, (x, y) in enumerate(points):
-        plt.plot(x, y, 'bo')
+    fig, ax = plt.subplots(1, 1)
+    for i, (x, y) in enumerate(tour_points):
+        ax.plot(x, y, 'bo')
         p, q = pqs[i % 2], pqs[(i//2) % 2]
-        print(p,q)
-        plt.text(x * p, y * q , order[i], fontsize=12)
-    plt.show()
+        ax.text(x * p, y * q , order[i], fontsize=12)
+    plt.savefig("tour_points.png")
+    plt.clf()
 
-    sc = score(points, order)
-    print(points.shape, sc.shape)
-    exit()
+    def score2(points, order):
+        i, j = order // 10, order % 10
+        a, b = points[i], points[j]
+        distance = np.linalg.norm(a - b, axis=-1)
+        return np.sum(distance, axis=1)
 
-    spline = scipy.interpolate.CubicSpline(points, sc)
+    # start interpolation
+    sc = score2(points, order)
 
-    min_score_i = np.argmin(sc)
-    best_order = order[:,min_score_i]
-    best_score = sc[min_score_i]
-    print("best order:", best_order, "score:", best_score)
-    return best_order, best_score
-    # return best
+    # knots = 10
+    # xk = np.linspace(tour_points[:,0].min(), tour_points[:,0].max(), knots)
+    # yk = np.linspace(tour_points[:,1].min(), tour_points[:,1].max(), knots)
+
+    # spline = LSQBivariateSpline(*tour_points.T, sc, xk, yk)
+    # print(spline.get_coeffs())
+
+    ## graph it
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    # low_x, low_y = np.min(tour_points, axis=0)
+    # high_x, high_y = np.max(tour_points, axis=0)
+    # print("tour_points.shape:", tour_points.shape)
+
+    # # Make data.
+    # X = np.arange(low_x, high_x)
+    # Y = np.arange(low_y, high_y)
+    # X, Y = np.meshgrid(X, Y)
+    # Z = spline(X, Y)
+
+    # Plot the surface.
+    surf = ax.plot_trisurf(tour_points[:,0], tour_points[:,1], sc)
+    # surf = ax.plot_surface(X, Y, Z, cmap='coolwarm', linewidth=0, antialiased=False)
+    plt.savefig("surface.png")
+    # plt.show()
+    return fig, ax, surf
+
+def update_lines(num, tour_points, score):
+    # NOTE: there is no .set_data() for 3 dim data...
+    line.set_data(*tour_points[:num].T)
+    line.set_3d_properties(score[:num])
+    return line
+
+
+line = ax.plot(tour_points[0:1], dat[1, 0:1], dat[2, 0:1])[0] for dat in data]
+
+ax.set_zlabel('tour length')
+
+ax.set_title('simulated annealing')
+
+# Creating the Animation object
+line_ani = animation.FuncAnimation(fig, update_lines, 25, fargs=(data, lines),
+                                   interval=50, blit=False)
+
+
+def get_total_tours(N):
+    return scipy.special.factorial(N-1)//2
 
 import random
 
@@ -223,7 +313,15 @@ torch.manual_seed(0)
 torch.cuda.manual_seed(0)
 random.seed(0)
 
-N = 5
+N = 7
+total_tours = get_total_tours(N)
+print("total_tours:", total_tours)
+# ## show how number of total tours scales with number of points
+# plt.plot(np.arange(N), get_total_tours(np.arange(N)))
+# plt.xlabel("number of points")
+# plt.ylabel("total number of different tours (log scale)")
+# # plt.yscale("log")
+# plt.show()
 low = -30
 high = 30
 
@@ -234,7 +332,8 @@ points = np.random.uniform(low, high, (N, 2))
 
 best_orders = []
 
-graph_surface(N)
+fig, ax, surf = graph_surface(N)
+
 
 exit()
 
