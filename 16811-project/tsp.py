@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as anim
+import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D
 
 import scipy    
@@ -193,6 +193,15 @@ def graph_surface(N, num_samples=None):
         perms = list(map(lambda x: list(map(int, x.split(" "))), list(perms)))
         order = np.array(perms)  # num_samples, N   
 
+    def convert_order1_to_order2(permss):
+        """perms is an iterable where each element looks like: [0 1 5 2 6 4 3]
+        returns (number of perms, N) array where 
+        each row looks like: [10 30 43 51 52 62 64]"""
+        permss = map(convert_perm_to_edge_set, permss)
+        permss = list(map(lambda x: list(map(int, x.split(" "))), permss))
+        order = np.array(permss) 
+        return order
+
     def convert_order_to_one_hot(order):
         num_samples, N = order.shape
         """returns vector of shape (num_samples, N^2) """
@@ -238,17 +247,17 @@ def graph_surface(N, num_samples=None):
         return tour_points
 
     tour_points = pca_sorta(distances) 
-
-    # plot tour_points in euclidean plane
     tour_points = tour_points.detach().numpy()
-    pqs = [(1 + 0.1), (1 - 0.1)]
-    fig, ax = plt.subplots(1, 1)
-    for i, (x, y) in enumerate(tour_points):
-        ax.plot(x, y, 'bo')
-        p, q = pqs[i % 2], pqs[(i//2) % 2]
-        ax.text(x * p, y * q , order[i], fontsize=12)
-    plt.savefig("tour_points.png")
-    plt.clf()
+
+    # # plot tour_points in euclidean plane
+    # pqs = [(1 + 0.1), (1 - 0.1)]
+    # fig, ax = plt.subplots(1, 1)
+    # for i, (x, y) in enumerate(tour_points):
+    #     ax.plot(x, y, 'bo')
+    #     p, q = pqs[i % 2], pqs[(i//2) % 2]
+    #     ax.text(x * p, y * q , order[i], fontsize=12)
+    # plt.savefig("tour_points.png")
+    # plt.clf()
 
     def score2(points, order):
         i, j = order // 10, order % 10
@@ -256,51 +265,65 @@ def graph_surface(N, num_samples=None):
         distance = np.linalg.norm(a - b, axis=-1)
         return np.sum(distance, axis=1)
 
-    # start interpolation
+    # run SA to get the orders
+    print("running SA")
+    _, _, _, all_orders, all_scores = \
+        SA(points, np.random.permutation(N), initial_temp, final_temp, alpha)
+    # print(list(map(convert_perm_to_edge_set, all_orders))[0])
+    all_orders = convert_order1_to_order2(all_orders)
+    # print(order[0:2])
+
+    ## graph 3D cost surface
     sc = score2(points, order)
 
-    # knots = 10
-    # xk = np.linspace(tour_points[:,0].min(), tour_points[:,0].max(), knots)
-    # yk = np.linspace(tour_points[:,1].min(), tour_points[:,1].max(), knots)
-
-    # spline = LSQBivariateSpline(*tour_points.T, sc, xk, yk)
-    # print(spline.get_coeffs())
-
-    ## graph it
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
     # low_x, low_y = np.min(tour_points, axis=0)
     # high_x, high_y = np.max(tour_points, axis=0)
     # print("tour_points.shape:", tour_points.shape)
 
-    # # Make data.
-    # X = np.arange(low_x, high_x)
-    # Y = np.arange(low_y, high_y)
-    # X, Y = np.meshgrid(X, Y)
-    # Z = spline(X, Y)
-
     # Plot the surface.
-    surf = ax.plot_trisurf(tour_points[:,0], tour_points[:,1], sc)
-    # surf = ax.plot_surface(X, Y, Z, cmap='coolwarm', linewidth=0, antialiased=False)
+    surf = ax.plot_trisurf(tour_points[:,0], tour_points[:,1], sc, cmap='coolwarm')
+    
+    # initial SA line
+    line = ax.plot(all_orders[0,0:1], all_orders[1,0:1], all_scores[0:1], 'bo')
+    # NOTE: there is no .set_data() for 3 dim data...
+    k = 5
+    lines = [ax.plot(*tour_points[i:i+1].T, sc[i:i+1], 'bo') for i in range(k)]
+    pqs = [(1 + 0.1), (1 - 0.1)] 
+    texts = [ax.text(tour_points[i,0] * pqs[i % 2], 
+                     tour_points[i,1] * pqs[(i//2) % 2], 
+                     sc[i],
+                     " ".join(map(str, order[i])), fontsize=12) for i in range(k)]
+
+    def update_lines(num, tour_points, score):
+        # NOTE: there is no .set_data() for 3 dim data...
+        k = 5
+        for i, (line, text) in enumerate(zip(lines, texts)):
+            print(lines, texts)
+            x, y = tour_points[num-k+i]
+            z = score[num-k+i]
+            line[0].set_data(x, y)
+            line[0].set_3d_properties(z)
+            p, q = pqs[i % 2], pqs[(i//2) % 2]
+            # text.set_text(x * p, y * q, order[num-k+i])
+            # text.set_3d_properties(z)
+
+        return line
+
+    # make plot pretty
+    ax.set_zlabel('tour length')
+    ax.set_title('simulated annealing')
+    # SA step number
+    text = ax.text(low + 1, high - 3, high + 1, 'SA step: {}'.format(0), fontsize=10)
+
+    # Creating the Animation object
+    ani = animation.FuncAnimation(fig, update_lines, 25, fargs=(tour_points, sc),
+                                  interval=50, blit=False)
+
     plt.savefig("surface.png")
     # plt.show()
+
     return fig, ax, surf
-
-def update_lines(num, tour_points, score):
-    # NOTE: there is no .set_data() for 3 dim data...
-    line.set_data(*tour_points[:num].T)
-    line.set_3d_properties(score[:num])
-    return line
-
-
-line = ax.plot(tour_points[0:1], dat[1, 0:1], dat[2, 0:1])[0] for dat in data]
-
-ax.set_zlabel('tour length')
-
-ax.set_title('simulated annealing')
-
-# Creating the Animation object
-line_ani = animation.FuncAnimation(fig, update_lines, 25, fargs=(data, lines),
-                                   interval=50, blit=False)
 
 
 def get_total_tours(N):
@@ -398,10 +421,10 @@ def animate(points, all_orders):
         text.set_text("SA step: {}".format(frame * interval if frame < len(some_orders) - last_one_times else best_iter))
         return ln, text
 
-    animation = anim.FuncAnimation(fig, update, frames=len(some_orders), interval=400)
+    anim = animation.FuncAnimation(fig, update, frames=len(some_orders), interval=400)
 
-    # ffmpeg_writer = anim.writers['ffmpeg']
+    # ffmpeg_writer = animation.writers['ffmpeg']
     # writer = ffmpeg_writer(fps=8, metadata=dict(artist='Me'), bitrate=1800)
     # output_file = "N{}_low{}_high{}_a{}_total{}.mp4".format(N, low, high, alpha, len(scores))
-    # animation.save(output_file, writer=writer)
+    # anim.save(output_file, writer=writer)
     plt.show()
