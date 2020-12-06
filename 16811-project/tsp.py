@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from scipy.spatial.distance import cdist
 import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
 import time
 import prim
 
@@ -147,10 +150,16 @@ def random_sampling(N, num_samples=1000):
     # return best
 
 def graph_surface(N, num_samples=100):
-    perms = set()
+
+    # get num_samples permutations
+    perms = []
+
+    def get_adj_pairs(l):
+        for i 
+        return set()
     while len(perms) < num_samples:
-        perms.add(" ".join(map(str, np.random.permutation(N))))
-    perms = list(map(lambda x: list(map(int, x.split(" "))), list(perms)))
+        perms.append(" ".join(map(str, np.random.permutation(N))))
+    perms = list(map(lambda x: list(map(int, x.split(" "))), list(set(perms))))
     order = np.array(perms)  # num_samples, N
 
     def convert_order_to_one_hot(order):
@@ -164,11 +173,41 @@ def graph_surface(N, num_samples=100):
         i, j = zip(*[(i, j) for i in range(N) for j in range(i)])
         one_hots = vec[:,i,j]
         return one_hots
-
+    
     one_hots = convert_order_to_one_hot(order) 
+    # distances between tours
+    distances = cdist(one_hots, one_hots, metric="hamming")
+
+    def pca_sorta(distances, alpha=0.01, beta=1, max_epochs=1500):
+        N, _ = distances.shape
+        distances = torch.Tensor(distances)  # get the distances squared
+        tour_points = nn.Parameter(torch.Tensor(np.random.randn(N, 2)))
+        optimizer = optim.Adam([tour_points], lr=alpha)
+        for _ in range(max_epochs):
+            curr_dist = torch.cdist(tour_points, tour_points)
+            error = torch.sum((curr_dist - distances) ** 2) + beta * torch.sum(tour_points**2)  # regularization term
+            optimizer.zero_grad()
+            error.backward()
+            optimizer.step()
+            if _ % 1000 == 0:
+                print("run {}: {}".format(_, error))
+        print("finished after {} iters".format(_))
+        return tour_points
+    tour_points = pca_sorta(distances) 
+    points = tour_points.detach().numpy()
+    pqs = [(1 + 0.1), (1 - 0.1)]
+    for i, (x, y) in enumerate(points):
+        plt.plot(x, y, 'bo')
+        p, q = pqs[i % 2], pqs[(i//2) % 2]
+        print(p,q)
+        plt.text(x * p, y * q , order[i], fontsize=12)
+    plt.show()
 
     sc = score(points, order)
+    print(points.shape, sc.shape)
+    exit()
 
+    spline = scipy.interpolate.CubicSpline(points, sc)
 
     min_score_i = np.argmin(sc)
     best_order = order[:,min_score_i]
@@ -177,7 +216,13 @@ def graph_surface(N, num_samples=100):
     return best_order, best_score
     # return best
 
+import random
+
 np.random.seed(0)
+torch.manual_seed(0)
+torch.cuda.manual_seed(0)
+random.seed(0)
+
 N = 5
 low = -30
 high = 30
@@ -193,8 +238,6 @@ graph_surface(N)
 
 exit()
 
-import torch.nn as nn
-import torch.nn.functional as F
 
 
 
