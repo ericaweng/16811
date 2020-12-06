@@ -202,6 +202,13 @@ def graph_surface(N, num_samples=None):
         order = np.array(permss) 
         return order
 
+    def convert_order1_to_order2_str(permss):
+        """perms is an iterable where each element looks like: [0 1 5 2 6 4 3]
+        returns (number of perms, N) array where 
+        each row looks like: [10 30 43 51 52 62 64]"""
+        permss = map(convert_perm_to_edge_set, permss)
+        return list(permss)
+
     def convert_order_to_one_hot(order):
         num_samples, N = order.shape
         """returns vector of shape (num_samples, N^2) """
@@ -270,7 +277,11 @@ def graph_surface(N, num_samples=None):
     _, _, _, all_orders, all_scores = \
         SA(points, np.random.permutation(N), initial_temp, final_temp, alpha)
     # print(list(map(convert_perm_to_edge_set, all_orders))[0])
-    all_orders = convert_order1_to_order2(all_orders)
+    all_orders = convert_order1_to_order2_str(all_orders)
+    # dictionary mapping an order to index it is found in order / tour_points
+    # e.g.
+    d = {" ".join(map(str, point)): i for i, point in enumerate(order)}
+    
     # print(order[0:2])
 
     ## graph 3D cost surface
@@ -283,32 +294,38 @@ def graph_surface(N, num_samples=None):
 
     # Plot the surface.
     surf = ax.plot_trisurf(tour_points[:,0], tour_points[:,1], sc, cmap='coolwarm')
-    
-    # initial SA line
-    line = ax.plot(all_orders[0,0:1], all_orders[1,0:1], all_scores[0:1], 'bo')
-    # NOTE: there is no .set_data() for 3 dim data...
-    k = 5
-    lines = [ax.plot(*tour_points[i:i+1].T, sc[i:i+1], 'bo') for i in range(k)]
-    pqs = [(1 + 0.1), (1 - 0.1)] 
-    texts = [ax.text(tour_points[i,0] * pqs[i % 2], 
-                     tour_points[i,1] * pqs[(i//2) % 2], 
-                     sc[i],
-                     " ".join(map(str, order[i])), fontsize=12) for i in range(k)]
+    del(sc)
 
-    def update_lines(num, tour_points, score):
+    # initial SA line
+    k = 5
+    lines = []
+    texts = []
+    pqs = [(1 + 0.1), (1 - 0.1)] 
+    for i in range(k):
+        ind = d[all_orders[i]]
+        line = ax.plot(*tour_points[ind:ind+1].T, all_scores[i:i+1])
+        text = ax.text(tour_points[ind,0] * pqs[i % 2], 
+                       tour_points[ind,0] * pqs[(i//2) % 2], 
+                       all_scores[i],
+                       " ".join(map(str, order[i])), fontsize=12)
+    # show initial points
+    # plt.show()
+    # exit()
+
+    def update_lines(num, lines, tour_points, all_orders, all_scores):
         # NOTE: there is no .set_data() for 3 dim data...
         k = 5
-        for i, (line, text) in enumerate(zip(lines, texts)):
-            print(lines, texts)
-            x, y = tour_points[num-k+i]
-            z = score[num-k+i]
-            line[0].set_data(x, y)
-            line[0].set_3d_properties(z)
-            p, q = pqs[i % 2], pqs[(i//2) % 2]
-            # text.set_text(x * p, y * q, order[num-k+i])
-            # text.set_3d_properties(z)
+        inds = [d[all_orders[num-k+i]] for i in range(k)]
+        x, y = tour_points[inds].T
+        z = [all_scores[num-k+i] for i in range(k)]
+        line[0].set_data(x, y)
+        line[0].set_3d_properties(z)
+        p, q = pqs[i % 2], pqs[(i//2) % 2]
+        # text.set_text(x * p, y * q, order[num-k+i])
+        # text.set_3d_properties(z)
+        text.set_text("SA step: {}-{}".format(num-k, num))
 
-        return line
+        return lines, text
 
     # make plot pretty
     ax.set_zlabel('tour length')
@@ -317,11 +334,11 @@ def graph_surface(N, num_samples=None):
     text = ax.text(low + 1, high - 3, high + 1, 'SA step: {}'.format(0), fontsize=10)
 
     # Creating the Animation object
-    ani = animation.FuncAnimation(fig, update_lines, 25, fargs=(tour_points, sc),
-                                  interval=50, blit=False)
+    ani = animation.FuncAnimation(fig, update_lines, 25, 
+            fargs=(lines, tour_points, all_orders, all_scores),
+            interval=400, blit=False)
 
-    plt.savefig("surface.png")
-    # plt.show()
+    plt.show()
 
     return fig, ax, surf
 
