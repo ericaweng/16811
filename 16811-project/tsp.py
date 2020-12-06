@@ -273,65 +273,81 @@ def graph_surface(N, num_samples=None):
         return np.sum(distance, axis=1)
 
     # run SA to get the orders
-    print("running SA")
     _, _, _, all_orders, all_scores = \
         SA(points, np.random.permutation(N), initial_temp, final_temp, alpha)
-    # print(list(map(convert_perm_to_edge_set, all_orders))[0])
-    all_orders = convert_order1_to_order2_str(all_orders)
+
+    # graph
+    fig = plt.figure(figsize=plt.figaspect(.4))
+
+    # do 2D SA subplot first
+    ax = fig.add_subplot(121)
+    sa_step = ax.text(low + 1, high - 3, 'SA step: {}'.format(0), fontsize=10)
+    ax.set_xlim(low, high)
+    ax.set_ylim(low, high)   
+    ln, = ax.plot(*points.T, 'ro')  # points are unchanging
+    ln, = ax.plot(*points[all_orders[0]].T)  # but the tour changes 
+
+    # now do 3D stuff computations
+    all_orders2 = convert_order1_to_order2_str(all_orders)
     # dictionary mapping an order to index it is found in order / tour_points
     # e.g.
     d = {" ".join(map(str, point)): i for i, point in enumerate(order)}
     
-    # print(order[0:2])
-
     ## graph 3D cost surface
     sc = score2(points, order)
 
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    # do 3D TSP tour space cost 
+    ax3D = fig.add_subplot(122, projection='3d')
+    # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
     # low_x, low_y = np.min(tour_points, axis=0)
     # high_x, high_y = np.max(tour_points, axis=0)
     # print("tour_points.shape:", tour_points.shape)
 
     # Plot the surface.
-    surf = ax.plot_trisurf(tour_points[:,0], tour_points[:,1], sc, cmap='coolwarm')
+    surf = ax3D.plot_trisurf(tour_points[:,0], tour_points[:,1], sc, cmap='coolwarm')
     del(sc)
 
     # initial SA line
-    k = 5
     lines = []
     texts = []
     pqs = [(1 + 0.1), (1 - 0.1)] 
-    for i in range(k):
-        ind = d[all_orders[i]]
-        line = ax.plot(*tour_points[ind:ind+1].T, all_scores[i:i+1])
-        text = ax.text(tour_points[ind,0] * pqs[i % 2], 
-                       tour_points[ind,0] * pqs[(i//2) % 2], 
-                       all_scores[i],
-                       " ".join(map(str, order[i])), fontsize=12)
+    ind = d[all_orders2[0]]
+    line, = ax3D.plot(*tour_points[ind:ind+1].T, all_scores[0:1], 'ro', zorder=2.5)
+
+    # text = ax.text(tour_points[ind,0] * pqs[i % 2], 
+    #                tour_points[ind,0] * pqs[(i//2) % 2], 
+    #                all_scores[i],
+    #                " ".join(map(str, order[i])), fontsize=12)
+    
+    # make plot pretty
+    ax3D.set_zlabel('tour length')
+    ax3D.set_title('simulated annealing')
+
     # show initial points
     # plt.show()
     # exit()
-
+    max_score = np.max(all_scores)
     def update_lines(num, lines, tour_points, all_orders, all_scores):
         # NOTE: there is no .set_data() for 3 dim data...
-        k = 5
-        inds = [d[all_orders[num-k+i]] for i in range(k)]
-        x, y = tour_points[inds].T
-        z = [all_scores[num-k+i] for i in range(k)]
-        line[0].set_data(x, y)
-        line[0].set_3d_properties(z)
-        p, q = pqs[i % 2], pqs[(i//2) % 2]
+        ind = d[all_orders2[num]]
+        x, y = tour_points[ind].T
+        z = tour_points
+        line.set_data(x, y)
+        line.set_3d_properties(z)
+        # p, q = pqs[i % 2], pqs[(i//2) % 2]
         # text.set_text(x * p, y * q, order[num-k+i])
         # text.set_3d_properties(z)
-        text.set_text("SA step: {}-{}".format(num-k, num))
+        sa_step.set_text("SA step: {}".format(num))
+
+        x, y = points[all_orders[num]].T
+
+        # close the tour
+        x = x.tolist() + [x[0]]
+        y = y.tolist() + [y[0]]
+        ln.set_data(x, y)
+        return line, ln, sa_step
 
         return lines, text
-
-    # make plot pretty
-    ax.set_zlabel('tour length')
-    ax.set_title('simulated annealing')
-    # SA step number
-    text = ax.text(low + 1, high - 3, high + 1, 'SA step: {}'.format(0), fontsize=10)
 
     # Creating the Animation object
     ani = animation.FuncAnimation(fig, update_lines, 25, 
@@ -340,7 +356,7 @@ def graph_surface(N, num_samples=None):
 
     plt.show()
 
-    return fig, ax, surf
+    return
 
 
 def get_total_tours(N):
@@ -353,7 +369,7 @@ torch.manual_seed(0)
 torch.cuda.manual_seed(0)
 random.seed(0)
 
-N = 7
+N = 5
 total_tours = get_total_tours(N)
 print("total_tours:", total_tours)
 # ## show how number of total tours scales with number of points
