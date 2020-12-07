@@ -178,20 +178,33 @@ def graph_surface(N, num_samples=None):
         from itertools import permutations
         # maybe_perms = multiset_permutations(N-1)
         maybe_perms = permutations(np.arange(N-1)) 
-        perms = set()
+        perms_d = {}
         for perm in maybe_perms:
-            perms.add(convert_perm_to_edge_set(list(perm) + [N-1]))
-        perms = list(map(lambda x: list(map(int, x.split(" "))), list(perms)))
+            perm_l = list(perm) + [N-1]
+            edge_set = convert_perm_to_edge_set(perm_l)
+            perms_d[edge_set] = perm_l
+        perms = list(map(lambda x: list(map(int, x.split(" "))), list(perms_d)))
         order = np.array(perms)  # num_samples, N   
-        print(len(perms))
+        order1 = list(perms_d.values())        
     else:
         assert num_samples > 0
-        perms = set()
+        perms_d = {}
         while len(perms) < num_samples:
             perm = np.random.permutation(N-1).tolist() + [N-1]
-            perms.add(convert_perm_to_edge_set(perm))
-        perms = list(map(lambda x: list(map(int, x.split(" "))), list(perms)))
+            edge_set = convert_perm_to_edge_set(perm)
+            perms_d[edge_set] = perm
+        perms = list(map(lambda x: list(map(int, x.split(" "))), list(perms_d)))
         order = np.array(perms)  # num_samples, N   
+        order1 = list(perms_d.values())
+
+    def convert_order2_to_order1(permss):
+        """perms is an iterable where each element looks like: [0 1 5 2 6 4 3]
+        returns (number of perms, N) array where 
+        each row looks like: [10 30 43 51 52 62 64]"""
+        permss = map(convert_perm_to_edge_set, permss)
+        permss = list(map(lambda x: list(map(int, x.split(" "))), permss))
+        order = np.array(permss) 
+        return order
 
     def convert_order1_to_order2(permss):
         """perms is an iterable where each element looks like: [0 1 5 2 6 4 3]
@@ -277,15 +290,15 @@ def graph_surface(N, num_samples=None):
         SA(points, np.random.permutation(N), initial_temp, final_temp, alpha)
 
     # graph
-    fig = plt.figure(figsize=plt.figaspect(.4))
+    fig = plt.figure(figsize=plt.figaspect(.3))
 
     # do 2D SA subplot first
-    ax = fig.add_subplot(121)
+    ax = fig.add_subplot(131)
     sa_step = ax.text(low + 1, high - 3, 'SA step: {}'.format(0), fontsize=10)
     ax.set_xlim(low, high)
     ax.set_ylim(low, high)   
     ln, = ax.plot(*points.T, 'ro')  # points are unchanging
-    ln, = ax.plot(*points[all_orders[0]].T)  # but the tour changes 
+    # ln, = ax.plot(*points[all_orders[0]].T)  # but the tour changes 
 
     # now do 3D stuff computations
     all_orders2 = convert_order1_to_order2_str(all_orders)
@@ -297,7 +310,8 @@ def graph_surface(N, num_samples=None):
     sc = score2(points, order)
 
     # do 3D TSP tour space cost 
-    ax3D = fig.add_subplot(122, projection='3d')
+    ax3D = fig.add_subplot(132, projection='3d')
+    # ax3D = fig.add_subplot(122)
     # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
     # low_x, low_y = np.min(tour_points, axis=0)
     # high_x, high_y = np.max(tour_points, axis=0)
@@ -305,14 +319,15 @@ def graph_surface(N, num_samples=None):
 
     # Plot the surface.
     surf = ax3D.plot_trisurf(tour_points[:,0], tour_points[:,1], sc, cmap='coolwarm')
-    del(sc)
+    # do contour instead of 3D projection
+    # ax3D.contourf(tour_points[:,0], tour_points[:,1], sc, facecolors='coolwarm')
 
     # initial SA line
     lines = []
     texts = []
     pqs = [(1 + 0.1), (1 - 0.1)] 
     ind = d[all_orders2[0]]
-    line, = ax3D.plot(*tour_points[ind:ind+1].T, all_scores[0:1], 'ro', zorder=2.5)
+    # line, = ax3D.plot(*tour_points[ind:ind+1].T, all_scores[0:1], 'ro', zorder=2.5)
 
     # text = ax.text(tour_points[ind,0] * pqs[i % 2], 
     #                tour_points[ind,0] * pqs[(i//2) % 2], 
@@ -326,7 +341,7 @@ def graph_surface(N, num_samples=None):
     # show initial points
     # plt.show()
     # exit()
-    max_score = np.max(all_scores)
+
     def update_lines(num, lines, tour_points, all_orders, all_scores):
         # NOTE: there is no .set_data() for 3 dim data...
         ind = d[all_orders2[num]]
@@ -350,11 +365,53 @@ def graph_surface(N, num_samples=None):
         return lines, text
 
     # Creating the Animation object
-    ani = animation.FuncAnimation(fig, update_lines, 25, 
-            fargs=(lines, tour_points, all_orders, all_scores),
-            interval=400, blit=False)
+    # ani = animation.FuncAnimation(fig, update_lines, 25, 
+    #         fargs=(lines, tour_points, all_orders, all_scores),
+    #         interval=400, blit=False)
 
-    plt.show()
+    # plt.show()
+
+    # plot clickable thing
+    # # plot tour_points in euclidean plane
+    pqs = [(1 + 0.1), (1 - 0.1)]
+    ax2 = fig.add_subplot(133)
+    for i, (x, y) in enumerate(tour_points):
+        ax2.plot(x, y, 'bo')
+        p, q = pqs[i % 2], pqs[(i//2) % 2]
+        # ax2.text(x * p, y * q , order[i], fontsize=12)
+    # plt.show()
+    # exit()
+    prev_plot = None
+    while True:
+        plt.sca(ax2)
+        xc, yc = plt.ginput(1, mouse_stop=2)[0]
+
+        distances = cdist(tour_points, np.array([[xc, yc]]))[:,0]
+        closest_point_i = np.argmin(distances)
+
+        # plt.plot(x,y, '*', 'MarkerSize', 6, 'LineWidth', 2)
+        if prev_plot is not None:
+            prev_plot.remove()
+            prev_plot3D.remove()
+            ln.remove()
+
+        tour_x, tour_y = tour_points[closest_point_i]
+        prev_plot, = ax2.plot(*tour_points[closest_point_i], 'ro')
+        prev_plot3D, = ax3D.plot([tour_x], [tour_y], [sc[closest_point_i]], 'ro', zorder=2.5)
+        # print(closest_point_i)
+        # print(points)
+        # print(order)
+        x, y = points[order1[closest_point_i]].T
+        # close the tour
+        x = x.tolist() + [x[0]]
+        y = y.tolist() + [y[0]]
+        ln, = ax.plot(x, y, 'b')
+        # exit()
+        # # draw points
+        # pts1.append([x, y])
+        # pts2.append([x2, y2])
+
+        plt.draw()
 
     return
 
@@ -369,7 +426,7 @@ torch.manual_seed(0)
 torch.cuda.manual_seed(0)
 random.seed(0)
 
-N = 5
+N = 6
 total_tours = get_total_tours(N)
 print("total_tours:", total_tours)
 # ## show how number of total tours scales with number of points
