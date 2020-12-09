@@ -286,8 +286,9 @@ def graph_surface(N, num_samples=None):
         return np.sum(distance, axis=1)
 
     # run SA to get the orders
-    _, _, _, all_orders, all_scores = \
-        SA(points, np.random.permutation(N), initial_temp, final_temp, alpha)
+    ##### LALALLALALA
+    # _, _, _, all_orders, all_scores = \
+    #     SA(points, np.random.permutation(N), initial_temp, final_temp, alpha)
 
     # graph
     fig = plt.figure(figsize=plt.figaspect(.3))
@@ -301,7 +302,8 @@ def graph_surface(N, num_samples=None):
     # ln, = ax.plot(*points[all_orders[0]].T)  # but the tour changes 
 
     # now do 3D stuff computations
-    all_orders2 = convert_order1_to_order2_str(all_orders)
+    # ##### LALALLALALA
+    # all_orders2 = convert_order1_to_order2_str(all_orders)
     # dictionary mapping an order to index it is found in order / tour_points
     # e.g.
     d = {" ".join(map(str, point)): i for i, point in enumerate(order)}
@@ -326,7 +328,7 @@ def graph_surface(N, num_samples=None):
     lines = []
     texts = []
     pqs = [(1 + 0.1), (1 - 0.1)] 
-    ind = d[all_orders2[0]]
+    # ind = d[all_orders2[0]]
     # line, = ax3D.plot(*tour_points[ind:ind+1].T, all_scores[0:1], 'ro', zorder=2.5)
 
     # text = ax.text(tour_points[ind,0] * pqs[i % 2], 
